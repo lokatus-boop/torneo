@@ -3,14 +3,22 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Pozo Americano – lmsanz.es</title>
+  <title>Pozo Americano · 6 jugadores (Bo3)</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .lock-badge { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: #fee2e2; color: #991b1b; }
+    .unlock-badge { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: #dcfce7; color: #166534; }
+  </style>
 </head>
 <body class="bg-slate-50 text-slate-900">
   <main class="max-w-5xl mx-auto p-6 space-y-8">
     <header class="space-y-1">
       <h1 class="text-3xl font-bold">Pozo Americano · 6 jugadores (Bo3)</h1>
       <p class="text-sm text-slate-600">Jueves (inicio 09/10/2025). Intercambiados los partidos de J1 y J3. Sin puntos individuales.</p>
+      <div class="flex items-center gap-2 text-xs">
+        <span id="lockStatus" class="lock-badge">Edición protegida</span>
+        <button id="unlockBtn" class="px-2 py-1 rounded bg-slate-800 text-white">Desbloquear edición</button>
+      </div>
     </header>
 
     <section>
@@ -20,12 +28,17 @@
 
     <section>
       <h2 class="text-2xl font-semibold mb-3">Resultados</h2>
-      <p class="text-sm text-slate-600 mb-2">Introduce juegos por set. Los datos se guardan en tu navegador (localStorage).</p>
+      <p class="text-sm text-slate-600 mb-2">
+        Introduce juegos por set. Los datos se guardan en tu navegador (localStorage).<br>
+        <strong>Para modificar resultados ya guardados o hacer reset/guardar en GitHub, necesitas el código: <span class="font-mono">101010</span></strong>.
+      </p>
       <div id="res" class="grid gap-4"></div>
-      <div class="mt-4 flex gap-2">
+      <div class="mt-4 flex flex-wrap gap-2">
         <button id="export" class="px-3 py-2 rounded-xl bg-indigo-600 text-white">Exportar resultados (JSON)</button>
-        <button id="reset" class="px-3 py-2 rounded-xl bg-slate-200">Reset</button>
+        <button id="saveGithub" class="px-3 py-2 rounded-xl bg-emerald-600 text-white">Guardar en GitHub</button>
+        <button id="reset" class="px-3 py-2 rounded-xl bg-rose-600 text-white">Reset resultados</button>
       </div>
+      <p class="text-xs text-slate-500">El guardado sube un JSON a <code>results/resultados_pozo.json</code> en el repo <code>lokatus-boop/torneo</code>.</p>
     </section>
 
     <section>
@@ -35,163 +48,183 @@
   </main>
 
 <script>
-const PLAYERS = ["Luismi", "Carlos", "Iván", "Guzmán", "Rubén", "Antonio"];
-const SCHEDULE = [
-  {
-    "jornada": 1,
-    "fecha": "2025-10-09",
-    "A1": "Luismi",
-    "A2": "Rubén",
-    "B1": "Guzmán",
-    "B2": "Antonio",
-    "rest1": "Carlos",
-    "rest2": "Iván"
-  },
-  {
-    "jornada": 2,
-    "fecha": "2025-10-16",
-    "A1": "Carlos",
-    "A2": "Antonio",
-    "B1": "Iván",
-    "B2": "Rubén",
-    "rest1": "Luismi",
-    "rest2": "Guzmán"
-  },
-  {
-    "jornada": 3,
-    "fecha": "2025-10-23",
-    "A1": "Luismi",
-    "A2": "Guzmán",
-    "B1": "Carlos",
-    "B2": "Iván",
-    "rest1": "Rubén",
-    "rest2": "Antonio"
-  },
-  {
-    "jornada": 4,
-    "fecha": "2025-10-30",
-    "A1": "Luismi",
-    "A2": "Antonio",
-    "B1": "Carlos",
-    "B2": "Guzmán",
-    "rest1": "Iván",
-    "rest2": "Rubén"
-  },
-  {
-    "jornada": 5,
-    "fecha": "2025-11-06",
-    "A1": "Luismi",
-    "A2": "Iván",
-    "B1": "Rubén",
-    "B2": "Antonio",
-    "rest1": "Carlos",
-    "rest2": "Guzmán"
-  },
-  {
-    "jornada": 6,
-    "fecha": "2025-11-13",
-    "A1": "Carlos",
-    "A2": "Rubén",
-    "B1": "Iván",
-    "B2": "Guzmán",
-    "rest1": "Luismi",
-    "rest2": "Antonio"
-  },
-  {
-    "jornada": 7,
-    "fecha": "2025-11-20",
-    "A1": "Luismi",
-    "A2": "Carlos",
-    "B1": "Iván",
-    "B2": "Antonio",
-    "rest1": "Guzmán",
-    "rest2": "Rubén"
-  },
-  {
-    "jornada": 8,
-    "fecha": "2025-11-27",
-    "A1": "Iván",
-    "A2": "Antonio",
-    "B1": "Guzmán",
-    "B2": "Rubén",
-    "rest1": "Luismi",
-    "rest2": "Carlos"
-  },
-  {
-    "jornada": 9,
-    "fecha": "2025-12-04",
-    "A1": "Luismi",
-    "A2": "Carlos",
-    "B1": "Guzmán",
-    "B2": "Rubén",
-    "rest1": "Iván",
-    "rest2": "Antonio"
-  },
-  {
-    "jornada": 10,
-    "fecha": "2025-12-11",
-    "A1": "Luismi",
-    "A2": "Guzmán",
-    "B1": "Iván",
-    "B2": "Rubén",
-    "rest1": "Carlos",
-    "rest2": "Antonio"
-  },
-  {
-    "jornada": 11,
-    "fecha": "2025-12-18",
-    "A1": "Carlos",
-    "A2": "Guzmán",
-    "B1": "Rubén",
-    "B2": "Antonio",
-    "rest1": "Luismi",
-    "rest2": "Iván"
-  },
-  {
-    "jornada": 12,
-    "fecha": "2026-01-08",
-    "A1": "Luismi",
-    "A2": "Rubén",
-    "B1": "Carlos",
-    "B2": "Iván",
-    "rest1": "Guzmán",
-    "rest2": "Antonio"
-  },
-  {
-    "jornada": 13,
-    "fecha": "2026-01-15",
-    "A1": "Luismi",
-    "A2": "Iván",
-    "B1": "Guzmán",
-    "B2": "Antonio",
-    "rest1": "Carlos",
-    "rest2": "Rubén"
-  },
-  {
-    "jornada": 14,
-    "fecha": "2026-01-22",
-    "A1": "Luismi",
-    "A2": "Antonio",
-    "B1": "Carlos",
-    "B2": "Rubén",
-    "rest1": "Iván",
-    "rest2": "Guzmán"
-  },
-  {
-    "jornada": 15,
-    "fecha": "2026-01-29",
-    "A1": "Carlos",
-    "A2": "Antonio",
-    "B1": "Iván",
-    "B2": "Guzmán",
-    "rest1": "Luismi",
-    "rest2": "Rubén"
-  }
-];
+// ===== CONFIG =====
+const PLAYERS = ["Luismi","Carlos","Iván","Guzmán","Rubén","Antonio"];
+const RESET_CODE = "101010";
+const SESSION_UNLOCK_KEY = "pozo_edit_unlocked";
+const SAVE_ENDPOINT = "https://torneo-green.vercel.app/api/save-results";
 
-function loadResults(){ return JSON.parse(localStorage.getItem("pozo_res") || "{}"); }
+// ===== STORAGE =====
+function loadResults(){ try { return JSON.parse(localStorage.getItem("pozo_res") || "{}"); } catch { return {}; } }
 function saveResults(d){ localStorage.setItem("pozo_res", JSON.stringify(d)); }
+function isUnlocked(){ return sessionStorage.getItem(SESSION_UNLOCK_KEY) === "1"; }
+function requireUnlock(msg="Introduce el código:"){
+  if (isUnlocked()) return true;
+  const code = prompt(msg);
+  if (code === null) return false;
+  if (code === RESET_CODE){
+    sessionStorage.setItem(SESSION_UNLOCK_KEY, "1");
+    updateLockBadge();
+    return true;
+  } else {
+    alert("Código incorrecto.");
+    return false;
+  }
+}
+function updateLockBadge(){
+  const el = document.getElementById("lockStatus");
+  if (!el) return;
+  if (isUnlocked()){
+    el.className = "unlock-badge";
+    el.textContent = "Edición desbloqueada";
+  } else {
+    el.className = "lock-badge";
+    el.textContent = "Edición protegida";
+  }
+}
 
+// ===== SCHEDULER (genera emparejamientos balanceados) =====
+function generateBalancedSchedule(players){
+  const n = players.length; // 6
+  const idx = Object.fromEntries(players.map((p,i)=>[p,i]));
+  const TEAM_TARGET = 2, OPP_TARGET = 4, MATCHES_NEEDED = 15;
+
+  // combinaciones de pares de 4 jugadores -> dos parejas
+  function allPairings(){
+    const res = [];
+    const ids = [...Array(n).keys()];
+    function normPair(a,b){ return a<b ? [a,b] : [b,a]; }
+    for(let a=0;a<n;a++) for(let b=a+1;b<n;b++)
+      for(let c=b+1;c<n;c++) for(let d=c+1;d<n;d++){
+        const splits = [
+          [normPair(a,b), normPair(c,d)],
+          [normPair(a,c), normPair(b,d)],
+          [normPair(a,d), normPair(b,c)],
+        ];
+        const seen = new Set();
+        for(const s of splits){
+          const key = JSON.stringify(s.slice().sort());
+          if(!seen.has(key)){ seen.add(key); res.push(s.slice().sort()); }
+        }
+      }
+    return res;
+  }
+  const possible = allPairings();
+
+  const teamCount = {};
+  const oppCount = {};
+  const playCount = Array(n).fill(0);
+  const used = [];
+
+  function keyPair(a,b){ if(a>b){const t=a;a=b;b=t;} return `${a}-${b}`; }
+  function oppPairs(m){ const [[a1,a2],[b1,b2]] = m; return [[a1,b1],[a1,b2],[a2,b1],[a2,b2]]; }
+
+  function canPlace(m){
+    const [A,B] = m;
+    for(const p of [...A,...B]) if (playCount[p] >= 10) return false;
+    for(const pair of [A,B]){
+      const k = keyPair(pair[0], pair[1]);
+      if ((teamCount[k]||0) >= TEAM_TARGET) return false;
+    }
+    for(const [x,y] of oppPairs(m)){
+      const k = keyPair(x,y);
+      if ((oppCount[k]||0) >= OPP_TARGET) return false;
+    }
+    return true;
+  }
+  function place(m){
+    used.push(m);
+    const [A,B] = m;
+    for(const p of [...A,...B]) playCount[p]++;
+    for(const pair of [A,B]){ const k=keyPair(pair[0],pair[1]); teamCount[k]=(teamCount[k]||0)+1; }
+    for(const [x,y] of oppPairs(m)){ const k=keyPair(x,y); oppCount[k]=(oppCount[k]||0)+1; }
+  }
+  function unplace(m){
+    used.pop();
+    const [A,B] = m;
+    for(const p of [...A,...B]) playCount[p]--;
+    for(const pair of [A,B]){ const k=keyPair(pair[0],pair[1]); teamCount[k]--; }
+    for(const [x,y] of oppPairs(m)){ const k=keyPair(x,y); oppCount[k]--; }
+  }
+
+  function score(m){
+    // heurística: prioriza pares/pugnas menos cubiertos
+    let tNeed=0, oNeed=0, press=0;
+    const [A,B] = m;
+    for(const pair of [A,B]){
+      const k=keyPair(pair[0],pair[1]);
+      tNeed += TEAM_TARGET - (teamCount[k]||0);
+    }
+    for(const [x,y] of oppPairs(m)){
+      const k=keyPair(x,y);
+      oNeed += OPP_TARGET - (oppCount[k]||0);
+    }
+    for(const p of [...A,...B]) press += playCount[p];
+    return -(tNeed + 0.5*oNeed) + press*0.001; // menor es mejor tras ordenar
+  }
+
+  function dfs(){
+    if (used.length === MATCHES_NEEDED){
+      // validar
+      for(let a=0;a<n;a++) for(let b=a+1;b<n;b++){
+        const k=keyPair(a,b);
+        if ((teamCount[k]||0)!==TEAM_TARGET) return false;
+        if ((oppCount[k]||0)!==OPP_TARGET) return false;
+      }
+      if (!playCount.every(v=>v===10)) return false;
+      return true;
+    }
+    const cand = possible.slice().sort((m1,m2)=>score(m1)-score(m2));
+    for(const m of cand){
+      if (!canPlace(m)) continue;
+      place(m);
+      if (dfs()) return true;
+      unplace(m);
+    }
+    return false;
+  }
+
+  if (!dfs()) throw new Error("No se pudo generar un calendario balanceado");
+  // mapear a nombres
+  return used.map(([[a1,a2],[b1,b2]]) => ({
+    A1: players[a1], A2: players[a2], B1: players[b1], B2: players[b2]
+  }));
+}
+
+function thursdaysWithHolidays(startISO, endISO, skipDatesISO){
+  const start = new Date(startISO+"T00:00:00");
+  const end = new Date(endISO+"T23:59:59");
+  const skip = new Set(skipDatesISO);
+  const out = [];
+  for(let d = new Date(start); d <= end; d.setDate(d.getDate()+1)){
+    if (d.getDay() === 4){ // Thursday
+      const iso = d.toISOString().slice(0,10);
+      if (!skip.has(iso)) out.push(iso);
+    }
+  }
+  return out;
+}
+
+function buildSchedule(){
+  const pairings = generateBalancedSchedule(PLAYERS); // 15 partidos
+  const dates = thursdaysWithHolidays("2025-10-09", "2026-07-30", new Set(["2025-12-25","2026-01-01"])).slice(0, 15);
+  const rows = pairings.map((m,i) => {
+    const playing = new Set([m.A1,m.A2,m.B1,m.B2]);
+    const rest = PLAYERS.filter(p=>!playing.has(p));
+    return { jornada: i+1, fecha: dates[i], ...m, rest1: rest[0], rest2: rest[1] };
+  });
+  // swap J1 ↔ J3 (solo emparejamientos, mantenemos fechas)
+  if (rows.length>=3){
+    for (const k of ["A1","A2","B1","B2","rest1","rest2"]){
+      const tmp = rows[0][k]; rows[0][k]=rows[2][k]; rows[2][k]=tmp;
+    }
+  }
+  return rows;
+}
+
+const SCHEDULE = buildSchedule();
+
+// ===== HELPERS =====
 function setsWon(row){
   const s = (row.sets || {});
   let A=0, B=0;
@@ -202,6 +235,7 @@ function setsWon(row){
   return [A,B];
 }
 
+// ===== RENDER CAL =====
 function renderCal(){
   const root = document.getElementById("cal");
   root.innerHTML = "";
@@ -220,6 +254,7 @@ function renderCal(){
   });
 }
 
+// ===== RENDER RESULTS =====
 function renderRes(){
   const data = loadResults();
   const root = document.getElementById("res");
@@ -245,20 +280,41 @@ function renderRes(){
       </div>`;
     root.appendChild(el);
   });
-  root.querySelectorAll("input").forEach(inp=>{
+
+  // Interacciones con protección
+  document.querySelectorAll("#res input[type=number]").forEach(inp=>{
+    inp.addEventListener("focus", e=>{
+      const k = e.target.getAttribute("data-k");
+      const d = loadResults();
+      const hasAny = d[k] && d[k].sets && Object.values(d[k].sets).some(v => (v ?? "") !== "");
+      if (hasAny && !isUnlocked()){
+        e.target.blur();
+        if (requireUnlock("Introduce el código para editar resultados ya guardados:")){
+          e.target.focus({preventScroll:true});
+        }
+      }
+    });
     inp.addEventListener("change", e=>{
       const k = e.target.getAttribute("data-k");
       const f = e.target.getAttribute("data-f");
-      const data = loadResults();
-      data[k] = data[k] || {sets:{}};
-      data[k].sets[f] = e.target.value;
-      saveResults(data);
+      const d = loadResults();
+      const hasAny = d[k] && d[k].sets && Object.values(d[k].sets).some(v => (v ?? "") !== "");
+      if (hasAny && !isUnlocked()){
+        if (!requireUnlock("Introduce el código para editar resultados ya guardados:")) {
+          e.target.value = (d[k] && d[k].sets && d[k].sets[f]) ? d[k].sets[f] : "";
+          return;
+        }
+      }
+      d[k] = d[k] || {sets:{}};
+      d[k].sets[f] = e.target.value;
+      saveResults(d);
       renderRes();
       renderTable();
     });
   });
 }
 
+// ===== STANDINGS =====
 function renderTable(){
   const data = loadResults();
   const stats = Object.fromEntries(PLAYERS.map(p=>[p, {played:0,wins:0,losses:0}]));
@@ -297,16 +353,50 @@ function renderTable(){
   root.appendChild(table);
 }
 
-document.getElementById("export").addEventListener("click", ()=>{
-  const blob = new Blob([localStorage.getItem("pozo_res")||"{}"], {type:"application/json"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url; a.download = "resultados_pozo.json"; a.click();
-  URL.revokeObjectURL(url);
-});
-document.getElementById("reset").addEventListener("click", ()=>{ localStorage.removeItem("pozo_res"); renderRes(); renderTable(); });
+// ===== BUTTONS =====
+document.addEventListener("DOMContentLoaded", ()=>{
+  updateLockBadge();
 
-renderCal(); renderRes(); renderTable();
+  document.getElementById("unlockBtn").addEventListener("click", ()=>{
+    requireUnlock("Introduce el código para desbloquear edición:");
+  });
+
+  document.getElementById("export").addEventListener("click", ()=>{
+    const blob = new Blob([localStorage.getItem("pozo_res")||"{}"], {type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "resultados_pozo.json"; a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  document.getElementById("reset").addEventListener("click", ()=>{
+    if (!requireUnlock("Introduce el código para resetear todos los resultados:")) return;
+    localStorage.removeItem("pozo_res");
+    alert("Resultados reseteados.");
+    renderRes(); renderTable();
+  });
+
+  document.getElementById("saveGithub").addEventListener("click", async ()=>{
+    if (!requireUnlock("Código para guardar en GitHub:")) return;
+    const resultados = loadResults();
+    const payload = { resultados, savedAt: new Date().toISOString(), note: "Resultados Pozo - GitHub Pages" };
+    try {
+      const res = await fetch(SAVE_ENDPOINT, {
+        method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(payload)
+      });
+      if (!res.ok) {
+        const text = await res.text(); throw new Error(text || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      alert("✅ Guardado en GitHub. Commit: " + (data.commitSha || "OK"));
+    } catch (err) {
+      console.error(err);
+      alert("❌ Error guardando en GitHub: " + err.message);
+    }
+  });
+
+  renderCal(); renderRes(); renderTable();
+});
 </script>
 </body>
 </html>
