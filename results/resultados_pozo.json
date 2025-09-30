@@ -1,5 +1,14 @@
 {
-  "resultados": {},
-  "savedAt": "2025-09-30T14:17:03.368Z",
+  "resultados": {
+    "j1": {
+      "sets": {
+        "s1a": "6",
+        "s1b": "0",
+        "s2a": "6",
+        "s2b": "0"
+      }
+    }
+  },
+  "savedAt": "2025-09-30T14:18:22.873Z",
   "note": "Resultados Pozo - GitHub Pages"
 }
