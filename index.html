@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Pozo Americano – lmsanz.es</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 text-slate-900">
+  <main class="max-w-5xl mx-auto p-6 space-y-8">
+    <header class="space-y-1">
+      <h1 class="text-3xl font-bold">Pozo Americano · 6 jugadores (Bo3)</h1>
+      <p class="text-sm text-slate-600">Jueves (inicio 09/10/2025). Intercambiados los partidos de J1 y J3. Sin puntos individuales.</p>
+    </header>
+
+    <section>
+      <h2 class="text-2xl font-semibold mb-3">Calendario</h2>
+      <div id="cal" class="grid gap-3"></div>
+    </section>
+
+    <section>
+      <h2 class="text-2xl font-semibold mb-3">Resultados</h2>
+      <p class="text-sm text-slate-600 mb-2">Introduce juegos por set. Los datos se guardan en tu navegador (localStorage).</p>
+      <div id="res" class="grid gap-4"></div>
+      <div class="mt-4 flex gap-2">
+        <button id="export" class="px-3 py-2 rounded-xl bg-indigo-600 text-white">Exportar resultados (JSON)</button>
+        <button id="reset" class="px-3 py-2 rounded-xl bg-slate-200">Reset</button>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="text-2xl font-semibold mb-3">Clasificación</h2>
+      <div id="tab"></div>
+    </section>
+  </main>
+
+<script>
+const PLAYERS = ["Luismi", "Carlos", "Iván", "Guzmán", "Rubén", "Antonio"];
+const SCHEDULE = [
+  {
+    "jornada": 1,
+    "fecha": "2025-10-09",
+    "A1": "Luismi",
+    "A2": "Rubén",
+    "B1": "Guzmán",
+    "B2": "Antonio",
+    "rest1": "Carlos",
+    "rest2": "Iván"
+  },
+  {
+    "jornada": 2,
+    "fecha": "2025-10-16",
+    "A1": "Carlos",
+    "A2": "Antonio",
+    "B1": "Iván",
+    "B2": "Rubén",
+    "rest1": "Luismi",
+    "rest2": "Guzmán"
+  },
+  {
+    "jornada": 3,
+    "fecha": "2025-10-23",
+    "A1": "Luismi",
+    "A2": "Guzmán",
+    "B1": "Carlos",
+    "B2": "Iván",
+    "rest1": "Rubén",
+    "rest2": "Antonio"
+  },
+  {
+    "jornada": 4,
+    "fecha": "2025-10-30",
+    "A1": "Luismi",
+    "A2": "Antonio",
+    "B1": "Carlos",
+    "B2": "Guzmán",
+    "rest1": "Iván",
+    "rest2": "Rubén"
+  },
+  {
+    "jornada": 5,
+    "fecha": "2025-11-06",
+    "A1": "Luismi",
+    "A2": "Iván",
+    "B1": "Rubén",
+    "B2": "Antonio",
+    "rest1": "Carlos",
+    "rest2": "Guzmán"
+  },
+  {
+    "jornada": 6,
+    "fecha": "2025-11-13",
+    "A1": "Carlos",
+    "A2": "Rubén",
+    "B1": "Iván",
+    "B2": "Guzmán",
+    "rest1": "Luismi",
+    "rest2": "Antonio"
+  },
+  {
+    "jornada": 7,
+    "fecha": "2025-11-20",
+    "A1": "Luismi",
+    "A2": "Carlos",
+    "B1": "Iván",
+    "B2": "Antonio",
+    "rest1": "Guzmán",
+    "rest2": "Rubén"
+  },
+  {
+    "jornada": 8,
+    "fecha": "2025-11-27",
+    "A1": "Iván",
+    "A2": "Antonio",
+    "B1": "Guzmán",
+    "B2": "Rubén",
+    "rest1": "Luismi",
+    "rest2": "Carlos"
+  },
+  {
+    "jornada": 9,
+    "fecha": "2025-12-04",
+    "A1": "Luismi",
+    "A2": "Carlos",
+    "B1": "Guzmán",
+    "B2": "Rubén",
+    "rest1": "Iván",
+    "rest2": "Antonio"
+  },
+  {
+    "jornada": 10,
+    "fecha": "2025-12-11",
+    "A1": "Luismi",
+    "A2": "Guzmán",
+    "B1": "Iván",
+    "B2": "Rubén",
+    "rest1": "Carlos",
+    "rest2": "Antonio"
+  },
+  {
+    "jornada": 11,
+    "fecha": "2025-12-18",
+    "A1": "Carlos",
+    "A2": "Guzmán",
+    "B1": "Rubén",
+    "B2": "Antonio",
+    "rest1": "Luismi",
+    "rest2": "Iván"
+  },
+  {
+    "jornada": 12,
+    "fecha": "2026-01-08",
+    "A1": "Luismi",
+    "A2": "Rubén",
+    "B1": "Carlos",
+    "B2": "Iván",
+    "rest1": "Guzmán",
+    "rest2": "Antonio"
+  },
+  {
+    "jornada": 13,
+    "fecha": "2026-01-15",
+    "A1": "Luismi",
+    "A2": "Iván",
+    "B1": "Guzmán",
+    "B2": "Antonio",
+    "rest1": "Carlos",
+    "rest2": "Rubén"
+  },
+  {
+    "jornada": 14,
+    "fecha": "2026-01-22",
+    "A1": "Luismi",
+    "A2": "Antonio",
+    "B1": "Carlos",
+    "B2": "Rubén",
+    "rest1": "Iván",
+    "rest2": "Guzmán"
+  },
+  {
+    "jornada": 15,
+    "fecha": "2026-01-29",
+    "A1": "Carlos",
+    "A2": "Antonio",
+    "B1": "Iván",
+    "B2": "Guzmán",
+    "rest1": "Luismi",
+    "rest2": "Rubén"
+  }
+];
+
+function loadResults(){ return JSON.parse(localStorage.getItem("pozo_res") || "{}"); }
+function saveResults(d){ localStorage.setItem("pozo_res", JSON.stringify(d)); }
+
+function setsWon(row){
+  const s = (row.sets || {});
+  let A=0, B=0;
+  [["s1a","s1b"],["s2a","s2b"],["s3a","s3b"]].forEach(([x,y])=>{
+    const a = parseInt(s[x]); const b = parseInt(s[y]);
+    if(Number.isFinite(a) && Number.isFinite(b)) { if (a>b) A++; else if (b>a) B++; }
+  });
+  return [A,B];
+}
+
+function renderCal(){
+  const root = document.getElementById("cal");
+  root.innerHTML = "";
+  SCHEDULE.forEach(r=>{
+    const el = document.createElement("div");
+    el.className = "bg-white rounded-2xl shadow p-4";
+    el.innerHTML = `<div class="flex items-center justify-between">
+        <div class="font-semibold">J${r.jornada} · ${r.fecha}</div>
+        <div class="text-xs text-slate-500">Descansan: ${r.rest1}, ${r.rest2}</div>
+      </div>
+      <div class="text-sm mt-1">
+        <div><span class="font-medium">A:</span> ${r.A1} + ${r.A2}</div>
+        <div><span class="font-medium">B:</span> ${r.B1} + ${r.B2}</div>
+      </div>`;
+    root.appendChild(el);
+  });
+}
+
+function renderRes(){
+  const data = loadResults();
+  const root = document.getElementById("res");
+  root.innerHTML = "";
+  SCHEDULE.forEach(r=>{
+    const k = "j"+r.jornada;
+    const row = data[k] || {sets:{}};
+    const [Aw,Bw] = setsWon(row);
+    const winner = Aw> Bw ? "A" : (Bw>Aw ? "B" : "-");
+    const el = document.createElement("div");
+    el.className = "bg-white rounded-2xl shadow p-4";
+    el.innerHTML = `<div class="flex items-center justify-between mb-2">
+        <div class="font-semibold">J${r.jornada} · ${r.fecha}</div>
+        <div class="text-xs">Ganador: <span class="font-mono">${winner}</span> · Sets A:${Aw} B:${Bw}</div>
+      </div>
+      <div class="grid grid-cols-6 gap-2 text-sm">
+        <label>S1 A<input data-k="${k}" data-f="s1a" type="number" class="mt-1 w-full border rounded p-1" value="${row.sets?.s1a??""}"></label>
+        <label>S1 B<input data-k="${k}" data-f="s1b" type="number" class="mt-1 w-full border rounded p-1" value="${row.sets?.s1b??""}"></label>
+        <label>S2 A<input data-k="${k}" data-f="s2a" type="number" class="mt-1 w-full border rounded p-1" value="${row.sets?.s2a??""}"></label>
+        <label>S2 B<input data-k="${k}" data-f="s2b" type="number" class="mt-1 w-full border rounded p-1" value="${row.sets?.s2b??""}"></label>
+        <label>S3 A<input data-k="${k}" data-f="s3a" type="number" class="mt-1 w-full border rounded p-1" value="${row.sets?.s3a??""}"></label>
+        <label>S3 B<input data-k="${k}" data-f="s3b" type="number" class="mt-1 w-full border rounded p-1" value="${row.sets?.s3b??""}"></label>
+      </div>`;
+    root.appendChild(el);
+  });
+  root.querySelectorAll("input").forEach(inp=>{
+    inp.addEventListener("change", e=>{
+      const k = e.target.getAttribute("data-k");
+      const f = e.target.getAttribute("data-f");
+      const data = loadResults();
+      data[k] = data[k] || {sets:{}};
+      data[k].sets[f] = e.target.value;
+      saveResults(data);
+      renderRes();
+      renderTable();
+    });
+  });
+}
+
+function renderTable(){
+  const data = loadResults();
+  const stats = Object.fromEntries(PLAYERS.map(p=>[p, {played:0,wins:0,losses:0}]));
+  SCHEDULE.forEach(r=>{
+    const row = data["j"+r.jornada] || {sets:{}};
+    const [Aw,Bw] = setsWon(row);
+    if (Aw==0 && Bw==0) return;
+    [r.A1,r.A2,r.B1,r.B2].forEach(p=>stats[p].played++);
+    if (Aw>Bw){ stats[r.A1].wins++; stats[r.A2].wins++; stats[r.B1].losses++; stats[r.B2].losses++; }
+    else if (Bw>Aw){ stats[r.B1].wins++; stats[r.B2].wins++; stats[r.A1].losses++; stats[r.A2].losses++; }
+  });
+  const rows = Object.entries(stats).map(([name,s])=>({name, ...s, pct: s.played? s.wins/s.played:0}))
+               .sort((a,b)=> b.wins - a.wins || b.pct - a.pct || a.name.localeCompare(b.name));
+
+  const root = document.getElementById("tab");
+  root.innerHTML = "";
+  const table = document.createElement("table");
+  table.className = "min-w-full bg-white rounded-2xl shadow overflow-hidden";
+  table.innerHTML = `<thead class="bg-slate-100">
+      <tr><th class="px-3 py-2 text-left">Jugador</th>
+          <th class="px-3 py-2 text-right">PJ</th>
+          <th class="px-3 py-2 text-right">V</th>
+          <th class="px-3 py-2 text-right">D</th>
+          <th class="px-3 py-2 text-right">%V</th></tr>
+    </thead><tbody></tbody>`;
+  const tbody = table.querySelector("tbody");
+  rows.forEach(r=>{
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td class="px-3 py-2">${r.name}</td>
+                    <td class="px-3 py-2 text-right">${r.played}</td>
+                    <td class="px-3 py-2 text-right">${r.wins}</td>
+                    <td class="px-3 py-2 text-right">${r.losses}</td>
+                    <td class="px-3 py-2 text-right">${(r.pct*100).toFixed(0)}%</td>`;
+    tbody.appendChild(tr);
+  });
+  root.appendChild(table);
+}
+
+document.getElementById("export").addEventListener("click", ()=>{
+  const blob = new Blob([localStorage.getItem("pozo_res")||"{}"], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "resultados_pozo.json"; a.click();
+  URL.revokeObjectURL(url);
+});
+document.getElementById("reset").addEventListener("click", ()=>{ localStorage.removeItem("pozo_res"); renderRes(); renderTable(); });
+
+renderCal(); renderRes(); renderTable();
+</script>
+</body>
+</html>
