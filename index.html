@@ -14,31 +14,24 @@
   <main class="max-w-5xl mx-auto p-6 space-y-8">
     <header class="space-y-1">
       <h1 class="text-3xl font-bold">Pozo Americano · 6 jugadores (Bo3)</h1>
-      <p class="text-sm text-slate-600">Jueves (inicio 09/10/2025). Intercambiados los partidos de J1 y J3. Sin puntos individuales.</p>
+      <p class="text-sm text-slate-600">Jueves (inicio <strong>09/10/2025</strong>). Intercambiados los partidos de J1 y J3. Sin puntos individuales.</p>
       <div class="flex items-center gap-2 text-xs">
         <span id="lockStatus" class="lock-badge">Edición protegida</span>
         <button id="unlockBtn" class="px-2 py-1 rounded bg-slate-800 text-white">Desbloquear edición</button>
+      </div>
+
+      <!-- Acciones -->
+      <div class="mt-4 flex flex-wrap gap-2">
+        <button id="export" class="px-3 py-2 rounded-xl bg-indigo-600 text-white">Exportar resultados (JSON)</button>
+        <button id="saveGithub" class="px-3 py-2 rounded-xl bg-emerald-600 text-white">Guardar en GitHub</button>
+        <button id="reset" class="px-3 py-2 rounded-xl bg-rose-600 text-white">Reset resultados</button>
+        <span class="text-xs text-slate-500 self-center">Código: <span class="font-mono">101010</span></span>
       </div>
     </header>
 
     <section>
       <h2 class="text-2xl font-semibold mb-3">Calendario</h2>
       <div id="cal" class="grid gap-3"></div>
-    </section>
-
-    <section>
-      <h2 class="text-2xl font-semibold mb-3">Resultados</h2>
-      <p class="text-sm text-slate-600 mb-2">
-        Introduce juegos por set. Los datos se guardan en tu navegador (localStorage).<br>
-        <strong>Para modificar resultados ya guardados o hacer reset/guardar en GitHub, necesitas el código: <span class="font-mono">101010</span></strong>.
-      </p>
-      <div id="res" class="grid gap-4"></div>
-      <div class="mt-4 flex flex-wrap gap-2">
-        <button id="export" class="px-3 py-2 rounded-xl bg-indigo-600 text-white">Exportar resultados (JSON)</button>
-        <button id="saveGithub" class="px-3 py-2 rounded-xl bg-emerald-600 text-white">Guardar en GitHub</button>
-        <button id="reset" class="px-3 py-2 rounded-xl bg-rose-600 text-white">Reset resultados</button>
-      </div>
-      <p class="text-xs text-slate-500">El guardado sube un JSON a <code>results/resultados_pozo.json</code> en el repo <code>lokatus-boop/torneo</code>.</p>
     </section>
 
     <section>
@@ -83,16 +76,31 @@ function updateLockBadge(){
   }
 }
 
-// ===== SCHEDULER (genera emparejamientos balanceados) =====
+// ===== UTIL FECHAS (sin desfase horario) =====
+function fmtLocalISO(d){
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,"0"), dd=String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${dd}`;
+}
+function thursdaysLocal(startY,startM,startD,endY,endM,endD, skipSet){
+  const start = new Date(startY, startM-1, startD);
+  const end   = new Date(endY,   endM-1,   endD);
+  const out = [];
+  for (let d=new Date(start); d<=end; d.setDate(d.getDate()+1)){
+    if (d.getDay()===4){ // 4=Jueves
+      const iso = fmtLocalISO(d);
+      if (!skipSet.has(iso)) out.push(iso);
+    }
+  }
+  return out;
+}
+
+// ===== GENERADOR DE EMPAREJAMIENTOS EQUILIBRADOS =====
 function generateBalancedSchedule(players){
   const n = players.length; // 6
-  const idx = Object.fromEntries(players.map((p,i)=>[p,i]));
   const TEAM_TARGET = 2, OPP_TARGET = 4, MATCHES_NEEDED = 15;
 
-  // combinaciones de pares de 4 jugadores -> dos parejas
   function allPairings(){
     const res = [];
-    const ids = [...Array(n).keys()];
     function normPair(a,b){ return a<b ? [a,b] : [b,a]; }
     for(let a=0;a<n;a++) for(let b=a+1;b<n;b++)
       for(let c=b+1;c<n;c++) for(let d=c+1;d<n;d++){
@@ -110,165 +118,98 @@ function generateBalancedSchedule(players){
     return res;
   }
   const possible = allPairings();
-
-  const teamCount = {};
-  const oppCount = {};
-  const playCount = Array(n).fill(0);
-  const used = [];
-
-  function keyPair(a,b){ if(a>b){const t=a;a=b;b=t;} return `${a}-${b}`; }
-  function oppPairs(m){ const [[a1,a2],[b1,b2]] = m; return [[a1,b1],[a1,b2],[a2,b1],[a2,b2]]; }
-
+  const teamCount={}, oppCount={}, playCount=Array(n).fill(0), used=[];
+  const key=(a,b)=>a<b?`${a}-${b}`:`${b}-${a}`;
+  const oppPairs=([[a1,a2],[b1,b2]])=>[[a1,b1],[a1,b2],[a2,b1],[a2,b2]];
   function canPlace(m){
-    const [A,B] = m;
-    for(const p of [...A,...B]) if (playCount[p] >= 10) return false;
-    for(const pair of [A,B]){
-      const k = keyPair(pair[0], pair[1]);
-      if ((teamCount[k]||0) >= TEAM_TARGET) return false;
-    }
-    for(const [x,y] of oppPairs(m)){
-      const k = keyPair(x,y);
-      if ((oppCount[k]||0) >= OPP_TARGET) return false;
-    }
+    const [A,B]=m;
+    for(const p of [...A,...B]) if (playCount[p]>=10) return false;
+    for(const pair of [A,B]) if ((teamCount[key(...pair)]||0)>=TEAM_TARGET) return false;
+    for(const [x,y] of oppPairs(m)) if ((oppCount[key(x,y)]||0)>=OPP_TARGET) return false;
     return true;
   }
   function place(m){
-    used.push(m);
-    const [A,B] = m;
+    const [A,B]=m; used.push(m);
     for(const p of [...A,...B]) playCount[p]++;
-    for(const pair of [A,B]){ const k=keyPair(pair[0],pair[1]); teamCount[k]=(teamCount[k]||0)+1; }
-    for(const [x,y] of oppPairs(m)){ const k=keyPair(x,y); oppCount[k]=(oppCount[k]||0)+1; }
+    for(const pair of [A,B]) teamCount[key(...pair)]=(teamCount[key(...pair)]||0)+1;
+    for(const [x,y] of oppPairs(m)) oppCount[key(x,y)]=(oppCount[key(x,y)]||0)+1;
   }
   function unplace(m){
-    used.pop();
-    const [A,B] = m;
+    const [A,B]=m; used.pop();
     for(const p of [...A,...B]) playCount[p]--;
-    for(const pair of [A,B]){ const k=keyPair(pair[0],pair[1]); teamCount[k]--; }
-    for(const [x,y] of oppPairs(m)){ const k=keyPair(x,y); oppCount[k]--; }
+    for(const pair of [A,B]) teamCount[key(...pair)]--;
+    for(const [x,y] of oppPairs(m)) oppCount[key(x,y)]--;
   }
-
   function score(m){
-    // heurística: prioriza pares/pugnas menos cubiertos
-    let tNeed=0, oNeed=0, press=0;
-    const [A,B] = m;
-    for(const pair of [A,B]){
-      const k=keyPair(pair[0],pair[1]);
-      tNeed += TEAM_TARGET - (teamCount[k]||0);
-    }
-    for(const [x,y] of oppPairs(m)){
-      const k=keyPair(x,y);
-      oNeed += OPP_TARGET - (oppCount[k]||0);
-    }
-    for(const p of [...A,...B]) press += playCount[p];
-    return -(tNeed + 0.5*oNeed) + press*0.001; // menor es mejor tras ordenar
+    let tNeed=0,oNeed=0,press=0; const [A,B]=m;
+    for(const pair of [A,B]) tNeed+=2-(teamCount[key(...pair)]||0);
+    for(const [x,y] of oppPairs(m)) oNeed+=4-(oppCount[key(x,y)]||0);
+    for(const p of [...A,...B]) press+=playCount[p];
+    return -(tNeed+0.5*oNeed)+press*0.001;
   }
-
   function dfs(){
-    if (used.length === MATCHES_NEEDED){
-      // validar
+    if (used.length===MATCHES_NEEDED){
       for(let a=0;a<n;a++) for(let b=a+1;b<n;b++){
-        const k=keyPair(a,b);
-        if ((teamCount[k]||0)!==TEAM_TARGET) return false;
-        if ((oppCount[k]||0)!==OPP_TARGET) return false;
+        if ((teamCount[key(a,b)]||0)!==TEAM_TARGET) return false;
+        if ((oppCount[key(a,b)]||0)!==OPP_TARGET) return false;
       }
-      if (!playCount.every(v=>v===10)) return false;
-      return true;
+      return playCount.every(v=>v===10);
     }
     const cand = possible.slice().sort((m1,m2)=>score(m1)-score(m2));
-    for(const m of cand){
-      if (!canPlace(m)) continue;
-      place(m);
-      if (dfs()) return true;
-      unplace(m);
-    }
+    for(const m of cand){ if(!canPlace(m)) continue; place(m); if(dfs()) return true; unplace(m); }
     return false;
   }
-
   if (!dfs()) throw new Error("No se pudo generar un calendario balanceado");
-  // mapear a nombres
-  return used.map(([[a1,a2],[b1,b2]]) => ({
-    A1: players[a1], A2: players[a2], B1: players[b1], B2: players[b2]
-  }));
-}
-
-function thursdaysWithHolidays(startISO, endISO, skipDatesISO){
-  const start = new Date(startISO+"T00:00:00");
-  const end = new Date(endISO+"T23:59:59");
-  const skip = new Set(skipDatesISO);
-  const out = [];
-  for(let d = new Date(start); d <= end; d.setDate(d.getDate()+1)){
-    if (d.getDay() === 4){ // Thursday
-      const iso = d.toISOString().slice(0,10);
-      if (!skip.has(iso)) out.push(iso);
-    }
-  }
-  return out;
+  return used.map(([[a1,a2],[b1,b2]]) => ({ A1: players[a1], A2: players[a2], B1: players[b1], B2: players[b2] }));
 }
 
 function buildSchedule(){
-  const pairings = generateBalancedSchedule(PLAYERS); // 15 partidos
-  const dates = thursdaysWithHolidays("2025-10-09", "2026-07-30", new Set(["2025-12-25","2026-01-01"])).slice(0, 15);
+  const pairings = generateBalancedSchedule(PLAYERS); // 15
+  const dates = thursdaysLocal(2025,10,9, 2026,7,30, new Set(["2025-12-25","2026-01-01"])).slice(0,15);
   const rows = pairings.map((m,i) => {
     const playing = new Set([m.A1,m.A2,m.B1,m.B2]);
     const rest = PLAYERS.filter(p=>!playing.has(p));
     return { jornada: i+1, fecha: dates[i], ...m, rest1: rest[0], rest2: rest[1] };
   });
-  // swap J1 ↔ J3 (solo emparejamientos, mantenemos fechas)
-  if (rows.length>=3){
-    for (const k of ["A1","A2","B1","B2","rest1","rest2"]){
-      const tmp = rows[0][k]; rows[0][k]=rows[2][k]; rows[2][k]=tmp;
-    }
-  }
+  // swap J1 ↔ J3 (mantenemos fechas)
+  if (rows.length>=3) for (const k of ["A1","A2","B1","B2","rest1","rest2"]) { const t=rows[0][k]; rows[0][k]=rows[2][k]; rows[2][k]=t; }
   return rows;
 }
-
 const SCHEDULE = buildSchedule();
 
-// ===== HELPERS =====
+// ===== RESULTADOS / CLASIFICACIÓN =====
 function setsWon(row){
-  const s = (row.sets || {});
-  let A=0, B=0;
+  const s = (row.sets || {}); let A=0, B=0;
   [["s1a","s1b"],["s2a","s2b"],["s3a","s3b"]].forEach(([x,y])=>{
     const a = parseInt(s[x]); const b = parseInt(s[y]);
     if(Number.isFinite(a) && Number.isFinite(b)) { if (a>b) A++; else if (b>a) B++; }
-  });
-  return [A,B];
+  }); return [A,B];
 }
 
-// ===== RENDER CAL =====
+// Pinta cada jornada con su caja de resultado debajo
 function renderCal(){
-  const root = document.getElementById("cal");
-  root.innerHTML = "";
-  SCHEDULE.forEach(r=>{
-    const el = document.createElement("div");
-    el.className = "bg-white rounded-2xl shadow p-4";
-    el.innerHTML = `<div class="flex items-center justify-between">
-        <div class="font-semibold">J${r.jornada} · ${r.fecha}</div>
-        <div class="text-xs text-slate-500">Descansan: ${r.rest1}, ${r.rest2}</div>
-      </div>
-      <div class="text-sm mt-1">
-        <div><span class="font-medium">A:</span> ${r.A1} + ${r.A2}</div>
-        <div><span class="font-medium">B:</span> ${r.B1} + ${r.B2}</div>
-      </div>`;
-    root.appendChild(el);
-  });
-}
-
-// ===== RENDER RESULTS =====
-function renderRes(){
   const data = loadResults();
-  const root = document.getElementById("res");
+  const root = document.getElementById("cal");
   root.innerHTML = "";
   SCHEDULE.forEach(r=>{
     const k = "j"+r.jornada;
     const row = data[k] || {sets:{}};
     const [Aw,Bw] = setsWon(row);
     const winner = Aw> Bw ? "A" : (Bw>Aw ? "B" : "-");
-    const el = document.createElement("div");
-    el.className = "bg-white rounded-2xl shadow p-4";
-    el.innerHTML = `<div class="flex items-center justify-between mb-2">
+    const card = document.createElement("div");
+    card.className = "bg-white rounded-2xl shadow p-4";
+    card.innerHTML = `
+      <div class="flex items-center justify-between">
         <div class="font-semibold">J${r.jornada} · ${r.fecha}</div>
-        <div class="text-xs">Ganador: <span class="font-mono">${winner}</span> · Sets A:${Aw} B:${Bw}</div>
+        <div class="text-xs text-slate-500">Descansan: ${r.rest1}, ${r.rest2}</div>
+      </div>
+      <div class="text-sm mt-1 mb-3">
+        <div><span class="font-medium">A:</span> ${r.A1} + ${r.A2}</div>
+        <div><span class="font-medium">B:</span> ${r.B1} + ${r.B2}</div>
+      </div>
+      <div class="flex items-center justify-between mb-2 text-xs">
+        <div>Ganador: <span class="font-mono">${winner}</span> · Sets A:${Aw} B:${Bw}</div>
+        <div class="text-slate-500">(edición protegida)</div>
       </div>
       <div class="grid grid-cols-6 gap-2 text-sm">
         <label>S1 A<input data-k="${k}" data-f="s1a" type="number" class="mt-1 w-full border rounded p-1" value="${row.sets?.s1a??""}"></label>
@@ -278,11 +219,11 @@ function renderRes(){
         <label>S3 A<input data-k="${k}" data-f="s3a" type="number" class="mt-1 w-full border rounded p-1" value="${row.sets?.s3a??""}"></label>
         <label>S3 B<input data-k="${k}" data-f="s3b" type="number" class="mt-1 w-full border rounded p-1" value="${row.sets?.s3b??""}"></label>
       </div>`;
-    root.appendChild(el);
+    root.appendChild(card);
   });
 
-  // Interacciones con protección
-  document.querySelectorAll("#res input[type=number]").forEach(inp=>{
+  // Protecciones y guardado
+  document.querySelectorAll("#cal input[type=number]").forEach(inp=>{
     inp.addEventListener("focus", e=>{
       const k = e.target.getAttribute("data-k");
       const d = loadResults();
@@ -308,13 +249,12 @@ function renderRes(){
       d[k] = d[k] || {sets:{}};
       d[k].sets[f] = e.target.value;
       saveResults(d);
-      renderRes();
+      renderCal();
       renderTable();
     });
   });
 }
 
-// ===== STANDINGS =====
 function renderTable(){
   const data = loadResults();
   const stats = Object.fromEntries(PLAYERS.map(p=>[p, {played:0,wins:0,losses:0}]));
@@ -353,7 +293,7 @@ function renderTable(){
   root.appendChild(table);
 }
 
-// ===== BUTTONS =====
+// ===== BOTONES =====
 document.addEventListener("DOMContentLoaded", ()=>{
   updateLockBadge();
 
@@ -373,7 +313,7 @@ document.addEventListener("DOMContentLoaded", ()=>{
     if (!requireUnlock("Introduce el código para resetear todos los resultados:")) return;
     localStorage.removeItem("pozo_res");
     alert("Resultados reseteados.");
-    renderRes(); renderTable();
+    renderCal(); renderTable();
   });
 
   document.getElementById("saveGithub").addEventListener("click", async ()=>{
@@ -395,7 +335,7 @@ document.addEventListener("DOMContentLoaded", ()=>{
     }
   });
 
-  renderCal(); renderRes(); renderTable();
+  renderCal(); renderTable();
 });
 </script>
 </body>
