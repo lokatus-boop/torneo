@@ -17,14 +17,13 @@
         background-position: center;
         background-attachment: fixed;">
   <!-- Velo para legibilidad -->
-  <div class="absolute inset-0 bg-white/50"></div>
+  <div class="absolute inset-0 bg-white/85"></div>
 
   <main class="relative max-w-5xl mx-auto p-6 space-y-8">
     <header class="space-y-1">
       <h1 class="text-3xl font-extrabold">LIGA PADELERA TOP PLAYERS MUNDIALES</h1>
-      <p class="text-sm text-slate-700">
-        Jueves (inicio <strong>09/10/2025</strong>). ENHORABUENA A LOS PREMIADOS
-      </p>
+      <p class="text-sm text-slate-700">Jueves (inicio <strong>09/10/2025</strong>)</p>
+
       <div class="flex items-center gap-2 text-xs">
         <span id="lockStatus" class="lock-badge">Edición protegida</span>
         <button id="unlockBtn" class="px-2 py-1 rounded bg-slate-800 text-white">Desbloquear edición</button>
@@ -32,10 +31,11 @@
 
       <!-- Acciones -->
       <div class="mt-4 flex flex-wrap gap-2">
+        <button id="syncBtn" class="px-3 py-2 rounded-xl bg-sky-600 text-white">Sincronizar</button>
         <button id="export" class="px-3 py-2 rounded-xl bg-indigo-600 text-white">Exportar resultados (JSON)</button>
         <button id="saveGithub" class="px-3 py-2 rounded-xl bg-emerald-600 text-white">Guardar en GitHub</button>
         <button id="reset" class="px-3 py-2 rounded-xl bg-rose-600 text-white">Reset resultados</button>
-        <span class="text-xs text-slate-500 self-center">Código: <span class="font-mono">XXXXX</span></span>
+        <span class="text-xs text-slate-500 self-center">Código edición/reset: <span class="font-mono">101010</span></span>
       </div>
     </header>
 
@@ -56,6 +56,11 @@ const PLAYERS = ["Luismi","Carlos","Iván","Guzmán","Rubén","Antonio"];
 const RESET_CODE = "101010";
 const SESSION_UNLOCK_KEY = "pozo_edit_unlocked";
 const SAVE_ENDPOINT = "https://torneo-green.vercel.app/api/save-results";
+
+// --- Lee siempre lo último (rama de trabajo con PRs):
+const REMOTE_JSON_URL = "https://raw.githubusercontent.com/lokatus-boop/torneo/results-updates/results/resultados_pozo.json";
+// Si prefieres leer solo lo mergeado en main, usa esta en su lugar:
+// const REMOTE_JSON_URL = "https://raw.githubusercontent.com/lokatus-boop/torneo/main/results/resultados_pozo.json";
 
 // ===== STORAGE =====
 function loadResults(){ try { return JSON.parse(localStorage.getItem("pozo_res") || "{}"); } catch { return {}; } }
@@ -86,7 +91,27 @@ function updateLockBadge(){
   }
 }
 
-// ===== UTIL FECHAS =====
+// ===== SYNC REMOTO (GitHub) =====
+async function syncFromRemote({ silent = false } = {}) {
+  try {
+    const res = await fetch(REMOTE_JSON_URL, { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const remote = await res.json(); // { resultados, savedAt, ... }
+    if (remote && remote.resultados) {
+      saveResults(remote.resultados);   // remoto manda
+      renderCal();
+      renderTable();
+      if (!silent) alert("✅ Resultados sincronizados desde GitHub.");
+    } else {
+      if (!silent) alert("ℹ️ No hay resultados remotos todavía.");
+    }
+  } catch (err) {
+    if (!silent) alert("❌ No se pudo sincronizar: " + err.message);
+    console.error(err);
+  }
+}
+
+// ===== FECHAS (local, sin desfase) =====
 function fmtLocalISO(d){
   const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,"0"), dd=String(d.getDate()).padStart(2,"0");
   return `${y}-${m}-${dd}`;
@@ -299,12 +324,16 @@ function renderTable(){
   root.appendChild(table);
 }
 
-// ===== BOTONES =====
+// ===== BOTONES / INIT =====
 document.addEventListener("DOMContentLoaded", ()=>{
   updateLockBadge();
 
   document.getElementById("unlockBtn").addEventListener("click", ()=>{
     requireUnlock("Introduce el código para desbloquear edición:");
+  });
+
+  document.getElementById("syncBtn").addEventListener("click", ()=>{
+    syncFromRemote();
   });
 
   document.getElementById("export").addEventListener("click", ()=>{
@@ -335,13 +364,22 @@ document.addEventListener("DOMContentLoaded", ()=>{
       }
       const data = await res.json();
       alert("✅ Guardado en GitHub. Commit: " + (data.commitSha || "OK"));
+      // refrescar desde remoto tras guardar
+      syncFromRemote({ silent: true });
     } catch (err) {
       console.error(err);
       alert("❌ Error guardando en GitHub: " + err.message);
     }
   });
 
+  // Render inicial
   renderCal(); renderTable();
+
+  // Sincroniza automáticamente al abrir (silencioso)
+  syncFromRemote({ silent: true });
+
+  // (Opcional) auto-sync cada 60s:
+  // setInterval(() => syncFromRemote({ silent: true }), 60000);
 });
 </script>
 </body>
